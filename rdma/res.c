@@ -439,10 +439,10 @@ static int res_qp_parse_cb(const struct nlmsghdr *nlh, void *data)
 		if (nla_line[RDMA_NLDEV_ATTR_RES_PID])
 			free(comm);
 
-		if (rd->json_output)
-			jsonw_end_array(rd->jw);
-		else
-			pr_out("\n");
+		newline(rd);
+
+		if (rd->show_details && nla_line[RDMA_NLDEV_ATTR_PROVIDER])
+			print_provider_table(rd, nla_line[RDMA_NLDEV_ATTR_PROVIDER]);
 	}
 	return MNL_CB_OK;
 }
@@ -678,10 +678,10 @@ static int res_cm_id_parse_cb(const struct nlmsghdr *nlh, void *data)
 		if (nla_line[RDMA_NLDEV_ATTR_RES_PID])
 			free(comm);
 
-		if (rd->json_output)
-			jsonw_end_array(rd->jw);
-		else
-			pr_out("\n");
+		newline(rd);
+
+		if (rd->show_details && nla_line[RDMA_NLDEV_ATTR_PROVIDER])
+			print_provider_table(rd, nla_line[RDMA_NLDEV_ATTR_PROVIDER]);
 	}
 	return MNL_CB_OK;
 }
@@ -804,10 +804,10 @@ static int res_cq_parse_cb(const struct nlmsghdr *nlh, void *data)
 		if (nla_line[RDMA_NLDEV_ATTR_RES_PID])
 			free(comm);
 
-		if (rd->json_output)
-			jsonw_end_array(rd->jw);
-		else
-			pr_out("\n");
+		newline(rd);
+
+		if (rd->show_details && nla_line[RDMA_NLDEV_ATTR_PROVIDER])
+			print_provider_table(rd, nla_line[RDMA_NLDEV_ATTR_PROVIDER]);
 	}
 	return MNL_CB_OK;
 }
@@ -919,10 +919,10 @@ static int res_mr_parse_cb(const struct nlmsghdr *nlh, void *data)
 		if (nla_line[RDMA_NLDEV_ATTR_RES_PID])
 			free(comm);
 
-		if (rd->json_output)
-			jsonw_end_array(rd->jw);
-		else
-			pr_out("\n");
+		newline(rd);
+
+		if (rd->show_details && nla_line[RDMA_NLDEV_ATTR_PROVIDER])
+			print_provider_table(rd, nla_line[RDMA_NLDEV_ATTR_PROVIDER]);
 	}
 	return MNL_CB_OK;
 }
@@ -1004,10 +1004,10 @@ static int res_pd_parse_cb(const struct nlmsghdr *nlh, void *data)
 		if (nla_line[RDMA_NLDEV_ATTR_RES_PID])
 			free(comm);
 
-		if (rd->json_output)
-			jsonw_end_array(rd->jw);
-		else
-			pr_out("\n");
+		newline(rd);
+
+		if (rd->show_details && nla_line[RDMA_NLDEV_ATTR_PROVIDER])
+			print_provider_table(rd, nla_line[RDMA_NLDEV_ATTR_PROVIDER]);
 	}
 	return MNL_CB_OK;
 }

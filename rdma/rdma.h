@@ -115,4 +115,12 @@ int rd_recv_msg(struct rd *rd, mnl_cb_t callback, void *data, uint32_t seq);
 void rd_prepare_msg(struct rd *rd, uint32_t cmd, uint32_t *seq, uint16_t flags);
 int rd_dev_init_cb(const struct nlmsghdr *nlh, void *data);
 int rd_attr_cb(const struct nlattr *attr, void *data);
+int rd_attr_check(const struct nlattr *attr, int *typep);
+
+/*
+ * Print helpers
+ */
+void print_provider_table(struct rd *rd, struct nlattr *tb);
+void newline(struct rd *rd);
+
 #endif /* _RDMA_TOOL_H_ */

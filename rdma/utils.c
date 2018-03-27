@@ -11,6 +11,7 @@
 
 #include "rdma.h"
 #include <ctype.h>
+#include <inttypes.h>
 
 int rd_argc(struct rd *rd)
 {
@@ -393,7 +394,31 @@ static const enum mnl_attr_data_type nldev_policy[RDMA_NLDEV_ATTR_MAX] = {
 	[RDMA_NLDEV_ATTR_RES_MRLEN] = MNL_TYPE_U64,
 	[RDMA_NLDEV_ATTR_NDEV_INDEX]		= MNL_TYPE_U32,
 	[RDMA_NLDEV_ATTR_NDEV_NAME]		= MNL_TYPE_NUL_STRING,
+	[RDMA_NLDEV_ATTR_PROVIDER] = MNL_TYPE_NESTED,
+	[RDMA_NLDEV_ATTR_PROVIDER_ENTRY] = MNL_TYPE_NESTED,
+	[RDMA_NLDEV_ATTR_PROVIDER_STRING] = MNL_TYPE_NUL_STRING,
+	[RDMA_NLDEV_ATTR_PROVIDER_PRINT_TYPE] = MNL_TYPE_U8,
+	[RDMA_NLDEV_ATTR_PROVIDER_S32] = MNL_TYPE_U32,
+	[RDMA_NLDEV_ATTR_PROVIDER_U32] = MNL_TYPE_U32,
+	[RDMA_NLDEV_ATTR_PROVIDER_S64] = MNL_TYPE_U64,
+	[RDMA_NLDEV_ATTR_PROVIDER_U64] = MNL_TYPE_U64,
 };
+
+int rd_attr_check(const struct nlattr *attr, int *typep)
+{
+	int type;
+
+	if (mnl_attr_type_valid(attr, RDMA_NLDEV_ATTR_MAX) < 0)
+		return MNL_CB_ERROR;
+
+	type = mnl_attr_get_type(attr);
+
+	if (mnl_attr_validate(attr, nldev_policy[type]) < 0)
+		return MNL_CB_ERROR;
+
+	*typep = nldev_policy[type];
+	return MNL_CB_OK;
+}
 
 int rd_attr_cb(const struct nlattr *attr, void *data)
 {
@@ -659,4 +684,170 @@ struct dev_map *dev_map_lookup(struct rd *rd, bool allow_port_index)
 	dev_map = _dev_map_lookup(rd, dev_name);
 	free(dev_name);
 	return dev_map;
+}
+
+#define nla_type(attr) ((attr)->nla_type & NLA_TYPE_MASK)
+
+void newline(struct rd *rd)
+{
+	if (rd->json_output)
+		jsonw_end_array(rd->jw);
+	else
+		pr_out("\n");
+}
+
+static void indent(struct rd *rd)
+{
+	if (!rd->json_output)
+		pr_out("     ");
+}
+
+static int print_provider_string(struct rd *rd, const char *key_str, const char *val_str)
+{
+	if (rd->json_output)
+		jsonw_string_field(rd->jw, key_str, val_str);
+	else
+		pr_out("%s %s ", key_str, val_str);
+	return 0;
+}
+
+static int print_provider_s32(struct rd *rd, const char *key_str, int32_t val, enum rdma_nldev_print_type print_type)
+{
+	if (rd->json_output) {
+		jsonw_int_field(rd->jw, key_str, val);
+		return 0;
+	}
+	switch (print_type) {
+	case RDMA_NLDEV_PRINT_TYPE_UNSPEC:
+		pr_out("%s %d ", key_str, val);
+		return 0;
+	case RDMA_NLDEV_PRINT_TYPE_HEX:
+		pr_out("%s 0x%x ", key_str, val);
+		return 0;
+	default:
+		return -EINVAL;
+	}
+}
+
+static int print_provider_u32(struct rd *rd, const char *key_str, uint32_t val, enum rdma_nldev_print_type print_type)
+{
+	if (rd->json_output) {
+		jsonw_int_field(rd->jw, key_str, val);
+		return 0;
+	}
+	switch (print_type) {
+	case RDMA_NLDEV_PRINT_TYPE_UNSPEC:
+		pr_out("%s %u ", key_str, val);
+		return 0;
+	case RDMA_NLDEV_PRINT_TYPE_HEX:
+		pr_out("%s 0x%x ", key_str, val);
+		return 0;
+	default:
+		return -EINVAL;
+	}
+}
+
+static int print_provider_s64(struct rd *rd, const char *key_str, int64_t val, enum rdma_nldev_print_type print_type)
+{
+	if (rd->json_output) {
+		jsonw_int_field(rd->jw, key_str, val);
+		return 0;
+	}
+	switch (print_type) {
+	case RDMA_NLDEV_PRINT_TYPE_UNSPEC:
+		pr_out("%s %" PRId64 " ", key_str, val);
+		return 0;
+	case RDMA_NLDEV_PRINT_TYPE_HEX:
+		pr_out("%s 0x%" PRIx64 " ", key_str, val);
+		return 0;
+	default:
+		return -EINVAL;
+	}
+}
+
+static int print_provider_u64(struct rd *rd, const char *key_str, uint64_t val, enum rdma_nldev_print_type print_type)
+{
+	if (rd->json_output) {
+		jsonw_int_field(rd->jw, key_str, val);
+		return 0;
+	}
+	switch (print_type) {
+	case RDMA_NLDEV_PRINT_TYPE_UNSPEC:
+		pr_out("%s %" PRIu64 " ", key_str, val);
+		return 0;
+	case RDMA_NLDEV_PRINT_TYPE_HEX:
+		pr_out("%s 0x%" PRIx64 " ", key_str, val);
+		return 0;
+	default:
+		return -EINVAL;
+	}
+}
+
+static int print_provider_entry(struct rd *rd, struct nlattr *key_attr,
+				struct nlattr *val_attr,
+				enum rdma_nldev_print_type print_type)
+{
+	const char *key_str = mnl_attr_get_str(key_attr);
+	int attr_type = nla_type(val_attr);
+
+	switch (attr_type) {
+	case RDMA_NLDEV_ATTR_PROVIDER_STRING:
+		return print_provider_string(rd, key_str,
+				mnl_attr_get_str(val_attr));
+	case RDMA_NLDEV_ATTR_PROVIDER_S32:
+		return print_provider_s32(rd, key_str,
+				mnl_attr_get_u32(val_attr), print_type);
+	case RDMA_NLDEV_ATTR_PROVIDER_U32:
+		return print_provider_u32(rd, key_str,
+				mnl_attr_get_u32(val_attr), print_type);
+	case RDMA_NLDEV_ATTR_PROVIDER_S64:
+		return print_provider_s64(rd, key_str,
+				mnl_attr_get_u64(val_attr), print_type);
+	case RDMA_NLDEV_ATTR_PROVIDER_U64:
+		return print_provider_u64(rd, key_str,
+				mnl_attr_get_u64(val_attr), print_type);
+	}
+	return -EINVAL;
+}
+
+void print_provider_table(struct rd *rd, struct nlattr *tb)
+{
+	struct nlattr *entry, *tb_entry, *key, *val;
+	int print_type = RDMA_NLDEV_PRINT_TYPE_UNSPEC;
+	int type;
+
+	mnl_attr_for_each_nested(tb_entry, tb) {
+		print_type = RDMA_NLDEV_PRINT_TYPE_UNSPEC;
+		key = NULL;
+
+		/*
+		 * Provider attrs are tuples of {key, [print-type], value}.
+		 * The key must be a string.  If print-type is present, it 
+		 * defines an alternate printf format type vs the native format
+		 * for the attribute.  And the value can be any available
+		 * provider type.
+		 */
+		indent(rd);
+		mnl_attr_for_each_nested(entry, tb_entry) {
+			if (rd_attr_check(entry, &type) != MNL_CB_OK) {
+				newline(rd);
+				return;
+			}
+			if (!key) {
+				if (type != MNL_TYPE_NUL_STRING)
+					return;
+				key = entry;
+			} else if (type == MNL_TYPE_U8) {
+				print_type = mnl_attr_get_u8(entry);
+			} else {
+				val = entry;
+				if (print_provider_entry(rd, key, val, print_type))
+					return;
+				print_type = RDMA_NLDEV_PRINT_TYPE_UNSPEC;
+				key = NULL;
+			}
+		}
+		newline(rd);
+	}
+	return;
 }
