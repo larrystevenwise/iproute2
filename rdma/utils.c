@@ -32,7 +32,7 @@ int strcmpx(const char *str1, const char *str2)
 	return strncmp(str1, str2, strlen(str1));
 }
 
-static bool rd_argv_match(struct rd *rd, const char *pattern)
+bool rd_argv_match(struct rd *rd, const char *pattern)
 {
 	if (!rd_argc(rd))
 		return false;

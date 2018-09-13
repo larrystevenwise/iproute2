@@ -14,6 +14,8 @@
 static int link_help(struct rd *rd)
 {
 	pr_out("Usage: %s link show [DEV/PORT_INDEX]\n", rd->filename);
+	pr_out("Usage: %s link add NAME type TYPE dev DEV\n", rd->filename);
+	pr_out("Usage: %s link delete NAME type TYPE\n", rd->filename);
 	return 0;
 }
 
@@ -315,10 +317,114 @@ static int link_show(struct rd *rd)
 	return rd_exec_link(rd, link_one_show, true);
 }
 
+static int link_add_parse_cb(const struct nlmsghdr *nlh, void *data)
+{
+	return MNL_CB_OK;
+}
+
+static int link_add(struct rd *rd)
+{
+	char *name;
+	char *type = NULL;
+	char *dev = NULL;
+	uint32_t seq;
+	int ret;
+
+	if (rd_no_arg(rd)) {
+		pr_err("No link name was supplied\n");
+		return -EINVAL;
+	}
+	name = rd_argv(rd);
+	rd_arg_inc(rd);
+	while (!rd_no_arg(rd)) {
+		if (rd_argv_match(rd, "type")) {
+			rd_arg_inc(rd);
+			type = rd_argv(rd);
+		} else if (rd_argv_match(rd, "dev")) {
+			rd_arg_inc(rd);
+			dev = rd_argv(rd);
+		} else {
+			pr_err("Invalid parameter %s\n", rd_argv(rd));
+			return -EINVAL;
+		}
+		rd_arg_inc(rd);
+	}
+	if (!type) {
+		pr_err("No type was supplied\n");
+		return -EINVAL;
+	}
+	if (!dev) {
+		pr_err("No net device was supplied\n");
+		return -EINVAL;
+	}
+
+	rd_prepare_msg(rd, RDMA_NLDEV_CMD_NEWLINK, &seq,
+		       (NLM_F_REQUEST | NLM_F_ACK));
+	mnl_attr_put_strz(rd->nlh, RDMA_NLDEV_ATTR_DEV_NAME, name);
+	mnl_attr_put_strz(rd->nlh, RDMA_NLDEV_ATTR_LINK_TYPE, type);
+	mnl_attr_put_strz(rd->nlh, RDMA_NLDEV_ATTR_NDEV_NAME, dev);
+	ret = rd_send_msg(rd);
+	if (ret)
+		return ret;
+
+	ret = rd_recv_msg(rd, link_add_parse_cb, rd, seq);
+	if (ret)
+		perror(NULL);
+	return ret;
+}
+
+static int link_del_parse_cb(const struct nlmsghdr *nlh, void *data)
+{
+	return MNL_CB_OK;
+}
+
+static int link_del(struct rd *rd)
+{
+	char *name;
+	char *type = NULL;
+	uint32_t seq;
+	int ret;
+
+	if (rd_no_arg(rd)) {
+		pr_err("No link type was supplied\n");
+		return -EINVAL;
+	}
+	name = rd_argv(rd);
+	rd_arg_inc(rd);
+	while (!rd_no_arg(rd)) {
+		if (rd_argv_match(rd, "type")) {
+			rd_arg_inc(rd);
+			type = rd_argv(rd);
+		} else {
+			pr_err("Invalid parameter %s\n", rd_argv(rd));
+			return -EINVAL;
+		}
+		rd_arg_inc(rd);
+	}
+	if (!type) {
+		pr_err("No type was supplied\n");
+		return -EINVAL;
+	}
+	rd_prepare_msg(rd, RDMA_NLDEV_CMD_DELLINK, &seq,
+		       (NLM_F_REQUEST | NLM_F_ACK));
+	mnl_attr_put_strz(rd->nlh, RDMA_NLDEV_ATTR_DEV_NAME, name);
+	mnl_attr_put_strz(rd->nlh, RDMA_NLDEV_ATTR_LINK_TYPE, type);
+	ret = rd_send_msg(rd);
+	if (ret)
+		return ret;
+
+	ret = rd_recv_msg(rd, link_del_parse_cb, rd, seq);
+	if (ret)
+		perror(NULL);
+	return ret;
+}
+
 int cmd_link(struct rd *rd)
 {
 	const struct rd_cmd cmds[] = {
 		{ NULL,		link_show },
+		{ "add",	link_add },
+		{ "delete",	link_del },
 		{ "show",	link_show },
 		{ "list",	link_show },
 		{ "help",	link_help },

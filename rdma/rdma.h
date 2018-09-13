@@ -79,6 +79,7 @@ struct rd_cmd {
  */
 bool rd_no_arg(struct rd *rd);
 void rd_arg_inc(struct rd *rd);
+bool rd_argv_match(struct rd *rd, const char *pattern);
 
 char *rd_argv(struct rd *rd);
 
