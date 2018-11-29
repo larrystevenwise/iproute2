@@ -664,6 +664,27 @@ int rd_recv_msg(struct rd *rd, mnl_cb_t callback, void *data, unsigned int seq)
 	return ret;
 }
 
+static int null_cb(const struct nlmsghdr *nlh, void *data)
+{
+       return MNL_CB_OK;
+}
+
+int rd_sendrecv_msg(struct rd *rd, unsigned int seq)
+{
+	int ret;
+
+	ret = rd_send_msg(rd);
+	if (ret) {
+		perror(NULL);
+		goto out;
+	}
+	ret = rd_recv_msg(rd, null_cb, rd, seq);
+	if (ret)
+		perror(NULL);
+out:
+	return ret;
+}
+
 static struct dev_map *_dev_map_lookup(struct rd *rd, const char *dev_name)
 {
 	struct dev_map *dev_map;

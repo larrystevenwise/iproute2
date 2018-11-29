@@ -115,6 +115,7 @@ bool rd_check_is_key_exist(struct rd *rd, const char *key);
  */
 int rd_send_msg(struct rd *rd);
 int rd_recv_msg(struct rd *rd, mnl_cb_t callback, void *data, uint32_t seq);
+int rd_sendrecv_msg(struct rd *rd, unsigned int seq);
 void rd_prepare_msg(struct rd *rd, uint32_t cmd, uint32_t *seq, uint16_t flags);
 int rd_dev_init_cb(const struct nlmsghdr *nlh, void *data);
 int rd_attr_cb(const struct nlattr *attr, void *data);
