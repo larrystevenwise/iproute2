@@ -69,6 +69,8 @@ struct rd {
 	bool json_output;
 	bool pretty_output;
 	struct list_head filter_list;
+	char *link_type;
+	char *link_netdev;
 };
 
 struct rd_cmd {
