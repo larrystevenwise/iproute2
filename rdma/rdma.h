@@ -70,6 +70,8 @@ struct rd {
 	bool pretty_output;
 	bool suppress_errors;
 	struct list_head filter_list;
+	char *link_type;
+	char *link_netdev;
 };
 
 struct rd_cmd {
