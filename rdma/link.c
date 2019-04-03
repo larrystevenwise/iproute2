@@ -341,14 +341,21 @@ static int link_show(struct rd *rd)
 
 static int link_add_netdev(struct rd *rd)
 {
-	rd->link_netdev = rd_argv(rd);
-	if (!rd->link_netdev) {
+	char *link_netdev;
+	uint32_t seq;
+
+	if (rd_no_arg(rd)) {
 		pr_err("Please provide a net device name.\n");
 		return -EINVAL;
 	}
 
-	rd_arg_inc(rd);
-	return 0;
+	link_netdev = rd_argv(rd);
+	rd_prepare_msg(rd, RDMA_NLDEV_CMD_NEWLINK, &seq,
+		       (NLM_F_REQUEST | NLM_F_ACK));
+	mnl_attr_put_strz(rd->nlh, RDMA_NLDEV_ATTR_DEV_NAME, rd->link_name);
+	mnl_attr_put_strz(rd->nlh, RDMA_NLDEV_ATTR_LINK_TYPE, rd->link_type);
+	mnl_attr_put_strz(rd->nlh, RDMA_NLDEV_ATTR_NDEV_NAME, link_netdev);
+	return rd_sendrecv_msg(rd, seq);
 }
 
 static int link_add_type(struct rd *rd)
@@ -358,11 +365,12 @@ static int link_add_type(struct rd *rd)
 		{ "netdev",	link_add_netdev},
 		{ 0 }
 	};
-	rd->link_type = rd_argv(rd);
-	if (!rd->link_type) {
+
+	if (rd_no_arg(rd)) {
 		pr_err("Please provide a link type name.\n");
 		return -EINVAL;
 	}
+	rd->link_type = rd_argv(rd);
 	rd_arg_inc(rd);
 	return rd_exec_cmd(rd, cmds, "parameter");
 }
@@ -375,27 +383,14 @@ static int link_add(struct rd *rd)
 		{ 0 }
 	};
 
-	uint32_t seq;
-	char *name;
-	int ret;
-
 	if (rd_no_arg(rd)) {
 		pr_err("Please provide a link name to add.\n");
 		return -EINVAL;
 	}
-	name = rd_argv(rd);
+	rd->link_name = rd_argv(rd);
 	rd_arg_inc(rd);
 
-	ret = rd_exec_cmd(rd, cmds, "parameter");
-	if (ret)
-		return ret;
-
-	rd_prepare_msg(rd, RDMA_NLDEV_CMD_NEWLINK, &seq,
-		       (NLM_F_REQUEST | NLM_F_ACK));
-	mnl_attr_put_strz(rd->nlh, RDMA_NLDEV_ATTR_DEV_NAME, name);
-	mnl_attr_put_strz(rd->nlh, RDMA_NLDEV_ATTR_LINK_TYPE, rd->link_type);
-	mnl_attr_put_strz(rd->nlh, RDMA_NLDEV_ATTR_NDEV_NAME, rd->link_netdev);
-	return rd_sendrecv_msg(rd, seq);
+	return rd_exec_cmd(rd, cmds, "parameter");
 }
 
 static int _link_del(struct rd *rd)
